@@ -34,3 +34,35 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+.ant-input,
+.ant-input-affix-wrapper,
+.ant-select-selector,
+.ant-picker,
+.ant-input-textarea,
+.ant-input-password {
+  background-color: #1e1e1e !important; /* nền đen xám */
+  color: #fff !important;
+  border-color: #3a3a3a !important;
+}
+
+.ant-input:hover,
+.ant-input-affix-wrapper:hover,
+.ant-select-selector:hover,
+.ant-picker:hover {
+  background-color: #2a2a2a !important; /* sáng hơn tí khi hover */
+  border-color: #5a5a5a !important;
+}
+
+.ant-input:focus,
+.ant-input-affix-wrapper-focused,
+.ant-select-focused .ant-select-selector,
+.ant-picker-focused {
+  background-color: #2a2a2a !important;
+  border-color: #1677ff !important; /* hoặc anh đổi sang màu chủ đạo */
+  box-shadow: none !important;
+}
+
+.ant-input::placeholder {
+  color: #9b9b9b !important;
+}

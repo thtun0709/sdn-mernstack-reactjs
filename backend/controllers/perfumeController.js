@@ -6,8 +6,28 @@ const mongoose = require('mongoose');
 // 🟢 [GET] Lấy danh sách tất cả nước hoa
 exports.getAllPerfumes = async (req, res) => {
   try {
-    const perfumes = await Perfume.find().populate("brand");
-    res.json(perfumes);
+    const perfumes = await Perfume.find().lean();
+    
+    // Tính avgRating cho mỗi perfume từ comments
+    const perfumesWithRating = await Promise.all(
+      perfumes.map(async (p) => {
+        const comments = await Comment.find({ perfumeId: p._id }).lean();
+        let avgRating = 0;
+        if (comments.length > 0) {
+          const ratings = comments.map(c => c.rating || 0);
+          avgRating = ratings.reduce((a, b) => a + b, 0) / ratings.length;
+        }
+        
+        return {
+          ...p,
+          perfumeName: p.perfumeName || p.name,
+          avgRating: Number(avgRating.toFixed(1)),
+          totalComments: comments.length
+        };
+      })
+    );
+    
+    res.json({ perfumes: perfumesWithRating });
   } catch (err) {
     console.error("❌ Lỗi khi lấy danh sách nước hoa:", err);
     res.status(500).json({ error: "Lỗi server khi lấy danh sách nước hoa" });
@@ -17,9 +37,7 @@ exports.getAllPerfumes = async (req, res) => {
 // 🟢 [GET] Lấy chi tiết 1 nước hoa
 exports.getPerfumeDetail = async (req, res) => {
   try {
-    const perfume = await Perfume.findById(req.params.id)
-      .populate("brand")
-      .lean();
+    const perfume = await Perfume.findById(req.params.id).lean();
 
     if (!perfume) {
       return res.status(404).json({ error: "Không tìm thấy nước hoa" });

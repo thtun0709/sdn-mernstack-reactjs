@@ -5,6 +5,7 @@ const Member = require('../models/memberModel');
 const Perfume = require('../models/perfumeModel');
 const Brand = require('../models/brandModel');
 const Comment = require('../models/commentModel');
+const commentController = require('../controllers/commentController');
 
 const router = express.Router();
 
@@ -24,10 +25,19 @@ function getUserFromReq(req) {
 }
 
 function requireAuth(req, res, next) {
+  // Check JWT token first
   const user = getUserFromReq(req);
-  if (!user) return res.status(401).json({ message: 'Unauthorized' });
-  req.user = user;
-  next();
+  if (user) {
+    req.user = user;
+    return next();
+  }
+  
+  // Fallback to session
+  if (req.session?.member) {
+    return next();
+  }
+  
+  return res.status(401).json({ message: 'Unauthorized' });
 }
 
 function requireAdmin(req, res, next) {
@@ -99,6 +109,8 @@ router.get('/auth/me', async (req, res) => {
 router.get('/perfumes', async (req, res) => {
   try {
     const { search, brand, gender, sort } = req.query;
+    console.log('🔍 Filter params:', { search, brand, gender, sort });
+    
     const filter = {};
     let sortOption = { createdAt: -1 };
     if (search) filter.$or = [{ name: { $regex: search, $options: 'i' } }, { perfumeName: { $regex: search, $options: 'i' } }];
@@ -106,9 +118,40 @@ router.get('/perfumes', async (req, res) => {
     if (gender) filter.gender = gender;
     if (sort === 'asc') sortOption = { price: 1 };
     if (sort === 'desc') sortOption = { price: -1 };
+    
+    console.log('🔍 MongoDB filter:', filter);
+    console.log('🔍 Sort option:', sortOption);
+    
     const perfumes = await Perfume.find(filter).sort(sortOption).lean();
-    res.json({ perfumes });
+    console.log(`✅ Found ${perfumes.length} perfumes`);
+    
+    // Debug: Log brand của từng perfume
+    if (brand) {
+      console.log('📊 Brands in result:', perfumes.map(p => `"${p.brand}"`).join(', '));
+    }
+    
+    // Tính avgRating cho mỗi perfume từ comments
+    const perfumesWithRating = await Promise.all(
+      perfumes.map(async (p) => {
+        const comments = await Comment.find({ perfumeId: p._id }).lean();
+        let avgRating = 0;
+        if (comments.length > 0) {
+          const ratings = comments.map(c => c.rating || 0);
+          avgRating = ratings.reduce((a, b) => a + b, 0) / ratings.length;
+        }
+        
+        return {
+          ...p,
+          perfumeName: p.perfumeName || p.name,
+          avgRating: Number(avgRating.toFixed(1)),
+          totalComments: comments.length
+        };
+      })
+    );
+    
+    res.json({ perfumes: perfumesWithRating });
   } catch (e) {
+    console.error('❌ Error loading perfumes:', e);
     res.status(500).json({ message: 'Failed to load perfumes' });
   }
 });
@@ -133,6 +176,11 @@ router.get('/brands', async (_req, res) => {
     res.status(500).json({ message: 'Failed to load brands' });
   }
 });
+
+// Comments API
+router.post('/comments/:id', requireAuth, commentController.addComment);
+router.put('/comments/:id', requireAuth, commentController.editComment);
+router.delete('/comments/:id', requireAuth, commentController.deleteComment);
 
 // Users (admin)
 router.get('/users', requireAdmin, async (_req, res) => {

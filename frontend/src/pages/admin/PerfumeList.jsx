@@ -37,11 +37,14 @@ export default function PerfumeList() {
 
   const getImageUrl = (imagePath) => {
     if (!imagePath) return assetUrl("/images/default_perfume.jpg");
-    // Đảm bảo đường dẫn ảnh đúng format
-    if (!imagePath.startsWith("/uploads/")) {
-      imagePath = `/uploads/perfumes/${imagePath}`;
+    
+    // Nếu imagePath đã có /uploads/perfumes/ thì dùng luôn
+    if (imagePath.startsWith("/uploads/")) {
+      return assetUrl(imagePath);
     }
-    return assetUrl(imagePath);
+    
+    // Nếu chỉ có tên file, thêm prefix
+    return assetUrl(`/uploads/perfumes/${imagePath}`);
   };
 
   const onDelete = async (id) => {
@@ -52,7 +55,7 @@ export default function PerfumeList() {
         fetchPerfumes();
       } catch (error) {
         console.error("❌ Error deleting perfume:", error);
-        alert("Không thể xóa nước hoa. Vui lòng thử lại!");
+        alert("Failed to delete perfume. Please try again!");
       }
     }
   };
@@ -81,8 +84,10 @@ export default function PerfumeList() {
               <span>Image</span>
               <span>Name</span>
               <span>Brand</span>
+              <span>Concentration</span>
+              <span>Volume</span>
+              <span>Description</span>
               <span>Price</span>
-              <span>Gender</span>
               <span>Action</span>
             </div>
 
@@ -99,29 +104,21 @@ export default function PerfumeList() {
                     }
                   />
                 </div>
-                <div>{p.perfumeName || "—"}</div>
-                <div>{p.brand || "—"}</div>
-                <div style={{ color: "#c41e3a" }}>
-                  {p.price?.toLocaleString() || 0} VND
+                <div>{p.perfumeName || p.name || "—"}</div>
+                <div>{typeof p.brand === 'object' ? (p.brand.brandName || p.brand.name) : p.brand || "—"}</div>
+                <div>{p.concentration || "—"}</div>
+                <div>{p.volume ? `${p.volume} ml` : "—"}</div>
+                <div className="perfume-description" title={p.description || "No description"}>
+                  {p.description || "No description"}
                 </div>
-                <div
-                  style={{
-                    color:
-                      p.gender === "Nam"
-                        ? "#3fa7ff"
-                        : p.gender === "Nữ"
-                        ? "#ff69b4"
-                        : "#b28cff",
-                    fontWeight: "600",
-                  }}
-                >
-                  {p.gender || "—"}
+                <div className="perfume-price">
+                  {p.price?.toLocaleString() || 0} VND
                 </div>
                 <div className="perfume-actions">
                   <Link
-                    to={`/perfumes/${p._id}`}
-                    className="btn-icon"
-                    title="View"
+                    to={`/admin/perfumes/${p._id}`}
+                    className="btn-icon btn-detail"
+                    title="View Detail"
                   >
                     <FaEye />
                   </Link>
@@ -193,15 +190,16 @@ export default function PerfumeList() {
 
           .perfume-list {
             width: 100%;
-            margin-top: 10px;
+            margin-top: 30px;
             color: #fff;
           }
 
           .list-header {
+          //  margin-left:20px;
             display: grid;
-            grid-template-columns: 1fr 1.5fr 1.2fr 1fr 1fr 1fr;
+            grid-template-columns: 130px 1.35fr 1.5fr 2fr 1.5fr 2fr 2.2fr 1.2fr;
             background: #202020;
-            padding: 12px 15px;
+            padding: 20px 20px;
             border-bottom: 2px solid #c41e3a;
             font-weight: 600;
             text-transform: uppercase;
@@ -210,7 +208,7 @@ export default function PerfumeList() {
 
           .perfume-row {
             display: grid;
-            grid-template-columns: 1fr 1.5fr 1.2fr 1fr 1fr 1fr;
+            grid-template-columns: 140px 1.5fr 2fr 2fr 2fr 2fr 2fr 2fr;
             align-items: center;
             background: #151515;
             border-bottom: 1px solid #333;
@@ -223,8 +221,8 @@ export default function PerfumeList() {
           }
 
           .perfume-img-container {
-            width: 80px;
-            height: 80px;
+            width: 90px;
+            height: 90px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -233,7 +231,6 @@ export default function PerfumeList() {
             overflow: hidden;
             padding: 5px;
             box-shadow: 0 0 6px rgba(255, 255, 255, 0.1);
-            flex-shrink: 0;
           }
 
           .perfume-img {
@@ -241,14 +238,27 @@ export default function PerfumeList() {
             height: 100%;
             object-fit: cover;
             border-radius: 6px;
-            transition: transform 0.3s ease, opacity 0.2s ease;
+          }
+
+          .perfume-description {
+            color: #ccc;
+            font-size: 13px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 300px;
+          }
+
+          .perfume-price {
+            color: #c41e3a;
+            font-weight: 600;
           }
 
           .perfume-actions {
             display: flex;
             justify-content: center;
             align-items: center;
-            gap: 10px;
+            gap: 12px;
           }
 
           .btn-icon {
@@ -263,18 +273,27 @@ export default function PerfumeList() {
             display: inline-flex;
             align-items: center;
             justify-content: center;
+            text-decoration: none;
           }
 
           .btn-icon:hover {
             background: #a0142e;
           }
 
-          .btn-edit {
+          .btn-detail {
             background: #1a5f7a;
           }
 
-          .btn-edit:hover {
+          .btn-detail:hover {
             background: #207398;
+          }
+
+          .btn-edit {
+            background: #e67e22;
+          }
+
+          .btn-edit:hover {
+            background: #d35400;
           }
 
           .btn-delete {
@@ -288,7 +307,8 @@ export default function PerfumeList() {
           @media (max-width: 480px) {
             .list-header,
             .perfume-row {
-              grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr;
+              grid-template-columns: 80px 1fr 1fr 1fr 1fr 1fr 1fr 1fr;
+              font-size: 12px;
             }
           }
         `}</style>

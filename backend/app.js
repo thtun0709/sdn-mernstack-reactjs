@@ -60,6 +60,8 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, "public")));
+// Serve uploads folder để frontend có thể truy cập ảnh
+app.use("/uploads", express.static(path.join(__dirname, "public/uploads")));
 
 /* ------------------ VIEW ENGINE (EJS) ------------------ */
 app.set("view engine", "ejs");
@@ -98,9 +100,9 @@ app.use(isLoggedIn);
 /* ------------------ ROUTES ------------------ */
 app.use("/api/auth", require("./router/authRouter"));
 app.use("/api/users", require("./router/userRouter"));
-app.use("/api/perfumes", require("./router/perfumeRouter"));
+// app.use("/api/perfumes", require("./router/perfumeRouter")); // ❌ Commented out - using apiRouter instead
 app.use("/api/brands", require("./router/brandRouter"));
-app.use("/api/comments", require("./router/commentRouter"));
+// app.use("/api/comments", require("./router/commentRouter")); // ❌ Commented out - using apiRouter instead
 app.use("/api", require("./router/apiRouter"));
 
 /* ------------------ REACT FRONTEND ------------------ */

@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import api from "../api/axios";
 import PerfumeCard from "../components/PerfumeCard";
 import { Input, Button, Select, Collapse, Spin } from "antd";
+import "./Home.css"; // Import custom CSS for filters
 
 export default function Home() {
   const [perfumes, setPerfumes] = useState([]);
@@ -16,11 +17,23 @@ export default function Home() {
 
   const loadPerfumes = async (params = {}) => {
     setLoading(true);
+    
+    // Remove empty params
+    const cleanParams = {};
+    if (params.search) cleanParams.search = params.search;
+    if (params.brand) cleanParams.brand = params.brand;
+    if (params.gender) cleanParams.gender = params.gender;
+    if (params.sort) cleanParams.sort = params.sort;
+    
+    console.log("📡 Loading perfumes with params:");
+    console.log("  cleanParams:", JSON.stringify(cleanParams));
+    
     try {
-      const res = await api.get("/api/perfumes", { params });
+      const res = await api.get("/api/perfumes", { params: cleanParams });
+      console.log("✅ Received perfumes:", res.data.perfumes?.length, "items");
       setPerfumes(res.data.perfumes || []);
     } catch (err) {
-      console.error(err);
+      console.error("❌ Error loading perfumes:", err);
       setPerfumes([]);
     } finally {
       setLoading(false);
@@ -30,19 +43,28 @@ export default function Home() {
   const loadBrands = async () => {
     try {
       const res = await api.get("/api/brands");
-      const list = (res.data.brands || [])
+      console.log("📦 Brands response:", res.data);
+      const brandsData = res.data.brands || res.data || [];
+      const list = brandsData
         .map((b) => b.name || b.brandName)
         .filter(Boolean);
       setBrands(list);
-    } catch {
-      const inferred = Array.from(
-        new Set(
-          (perfumes || []).map(
-            (p) => (p.brand && (p.brand.brandName || p.brand.name)) || p.brand
+    } catch (err) {
+      console.error("❌ Error loading brands:", err);
+      // Fallback: extract from perfumes
+      if (perfumes.length > 0) {
+        const inferred = Array.from(
+          new Set(
+            perfumes.map((p) => {
+              if (typeof p.brand === 'object') {
+                return p.brand.brandName || p.brand.name;
+              }
+              return p.brand;
+            }).filter(Boolean)
           )
-        )
-      ).filter(Boolean);
-      setBrands(inferred);
+        );
+        setBrands(inferred);
+      }
     }
   };
 
@@ -55,10 +77,23 @@ export default function Home() {
   }, [perfumes.length]);
 
   const onApplyFilter = () => {
+    console.log("🔍 Applying filters:");
+    console.log("  - search:", search);
+    console.log("  - brand:", brand);
+    console.log("  - gender:", gender);
+    console.log("  - sort:", sort);
     loadPerfumes({ search, brand, gender, sort });
   };
 
-  const featured = useMemo(() => perfumes.slice(0, 3), [perfumes]);
+  const onClearFilter = () => {
+    setSearch("");
+    setBrand("");
+    setGender("");
+    setSort("");
+    loadPerfumes({});
+  };
+
+  const featured = useMemo(() => perfumes.slice(0, 4), [perfumes]);
 
   return (
     <div className="bg-gradient-to-b from-[#0c0c0c] to-black min-h-screen text-white font-['Cormorant_Garamond']">
@@ -118,10 +153,12 @@ export default function Home() {
       {/* 🔹 FEATURED COLLECTION */}
       <section className="py-10 text-center">
         <h2 className="text-3xl font-bold mb-8">Featured Collection</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8 px-6">
-          {featured.map((p) => (
-            <PerfumeCard key={p._id} perfume={p} />
-          ))}
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
+            {featured.map((p) => (
+              <PerfumeCard key={p._id} perfume={p} />
+            ))}
+          </div>
         </div>
       </section>
 
@@ -132,6 +169,7 @@ export default function Home() {
             placeholder="Search by perfume name..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            onPressEnter={onApplyFilter}
             size="large"
             className="bg-[#111] text-white border-[#333]"
           />
@@ -144,6 +182,13 @@ export default function Home() {
           >
             Apply
           </Button>
+          <Button
+            size="large"
+            onClick={onClearFilter}
+            className="bg-[#333] hover:bg-[#444] text-white border-none"
+          >
+            Clear
+          </Button>
         </div>
 
         <Collapse
@@ -151,7 +196,7 @@ export default function Home() {
           items={[
             {
               key: "filters",
-              label: <span className="text-white">Filters</span>,
+              label: <span className="text-white font-semibold">Advanced Filters</span>,
               children: (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <Select
@@ -160,7 +205,11 @@ export default function Home() {
                     value={brand || undefined}
                     onChange={(v) => setBrand(v || "")}
                     options={brands.map((b) => ({ value: b, label: b }))}
-                    className="w-full"
+                    className="w-full custom-select"
+                    size="large"
+                    style={{
+                      backgroundColor: 'rgba(17, 17, 17, 0.8)',
+                    }}
                   />
                   <Select
                     allowClear
@@ -172,6 +221,11 @@ export default function Home() {
                       { value: "Nữ", label: "Female" },
                       { value: "Unisex", label: "Unisex" },
                     ]}
+                    className="w-full custom-select"
+                    size="large"
+                    style={{
+                      backgroundColor: 'rgba(17, 17, 17, 0.8)',
+                    }}
                   />
                   <Select
                     allowClear
@@ -182,6 +236,11 @@ export default function Home() {
                       { value: "asc", label: "Price ascending" },
                       { value: "desc", label: "Price descending" },
                     ]}
+                    className="w-full custom-select"
+                    size="large"
+                    style={{
+                      backgroundColor: 'rgba(17, 17, 17, 0.8)',
+                    }}
                   />
                 </div>
               ),
@@ -191,7 +250,7 @@ export default function Home() {
       </section>
 
       {/* 🔹 PERFUME GRID */}
-      <section className="pb-20 px-6">
+      <section className="pb-20">
         {loading ? (
           <div className="text-center py-10">
             <Spin size="large" />
@@ -199,10 +258,12 @@ export default function Home() {
         ) : perfumes.length === 0 ? (
           <p className="text-center text-gray-400">No perfumes available!</p>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
-            {perfumes.map((p) => (
-              <PerfumeCard key={p._id} perfume={p} />
-            ))}
+          <div className="max-w-7xl mx-auto px-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {perfumes.map((p) => (
+                <PerfumeCard key={p._id} perfume={p} />
+              ))}
+            </div>
           </div>
         )}
       </section>

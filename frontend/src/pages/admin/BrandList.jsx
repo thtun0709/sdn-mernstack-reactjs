@@ -3,6 +3,7 @@ import api from "../../api/axios";
 import AdminSidebar from "../../components/AdminSidebar";
 import { FaTrash, FaEye, FaEdit, FaPlus } from "react-icons/fa";
 import { Link } from "react-router-dom";
+import { message } from "antd";
 
 export default function BrandList() {
   const [brands, setBrands] = useState([]);
@@ -24,10 +25,37 @@ export default function BrandList() {
     fetchBrands();
   }, []);
 
-  const onDelete = async (id) => {
-    if (window.confirm("Are you sure you want to delete this brand?")) {
-      await api.delete(`/api/brands/${id}`);
-      fetchBrands();
+  const onDelete = async (id, brandName) => {
+    console.log('🗑️ Delete clicked for:', id, brandName);
+    
+    const confirmed = window.confirm(`Bạn có chắc chắn muốn xóa thương hiệu "${brandName}"?`);
+    
+    if (!confirmed) {
+      console.log('❌ User cancelled delete');
+      return;
+    }
+    
+    console.log('✅ User confirmed delete');
+    try {
+      console.log('🔄 Sending DELETE request to:', `/api/brands/${id}`);
+      const res = await api.delete(`/api/brands/${id}`);
+      console.log('📦 Response:', res.data);
+      
+      // Kiểm tra response để hiển thị thông báo phù hợp
+      if (res.data.canDelete) {
+        message.success(res.data.message || "Xóa thương hiệu thành công!");
+        fetchBrands();
+      }
+    } catch (error) {
+      console.error('❌ Delete error:', error);
+      // Xử lý lỗi từ backend
+      if (error.response && error.response.status === 400) {
+        const { message: msg, perfumeCount } = error.response.data;
+        console.log('⚠️ Cannot delete - has perfumes:', perfumeCount);
+        alert(msg || `Không thể xóa thương hiệu này vì có ${perfumeCount} nước hoa đang sử dụng`);
+      } else {
+        message.error("Có lỗi xảy ra khi xóa thương hiệu. Vui lòng thử lại!");
+      }
     }
   };
 
@@ -101,7 +129,7 @@ export default function BrandList() {
                   </Link>
                   <button
                     className="btn-icon btn-delete"
-                    onClick={() => onDelete(b._id)}
+                    onClick={() => onDelete(b._id, b.name)}
                     title="Delete"
                   >
                     <FaTrash />

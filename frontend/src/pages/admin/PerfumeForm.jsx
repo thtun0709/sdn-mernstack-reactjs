@@ -18,6 +18,7 @@ export default function PerfumeForm() {
     brand: "",
     volume: "",
     targetAudience: "",
+    uri: "",
     ingredients: "",
     description: "",
     image: null,
@@ -25,7 +26,7 @@ export default function PerfumeForm() {
   const [error, setError] = useState("");
   const isEdit = Boolean(id);
 
-  // 🟢 Lấy danh sách thương hiệu + chi tiết nước hoa (nếu edit)
+  // Fetch brands list + perfume details (if edit mode)
   useEffect(() => {
     const fetchBrands = async () => {
       try {
@@ -37,7 +38,7 @@ export default function PerfumeForm() {
         setBrands(data);
       } catch (err) {
         console.error("❌ Brand API error:", err);
-        setError("Không tải được danh sách thương hiệu.");
+        setError("Failed to load brands list.");
       }
     };
 
@@ -45,14 +46,14 @@ export default function PerfumeForm() {
       try {
         const res = await api.get(`/api/perfumes/${id}`);
         const p = res.data.perfume;
-        // 🟢 Đảm bảo brand là string (name) khi hiển thị
+        // Ensure brand is string (name) when displaying
         setPerfume({
           ...p,
           brand: typeof p.brand === "object" ? p.brand.name : p.brand,
         });
       } catch (err) {
         console.error("❌ Perfume API error:", err);
-        setError("Không tải được thông tin nước hoa.");
+        setError("Failed to load perfume information.");
       }
     };
 
@@ -60,65 +61,76 @@ export default function PerfumeForm() {
     if (isEdit) fetchPerfume();
   }, [id, isEdit]);
 
-  // 🟢 Cập nhật input
+  // Update input
   const handleChange = (e) => {
     const { name, value } = e.target;
     setPerfume((prev) => ({ ...prev, [name]: value }));
   };
 
-  // 🟢 Upload ảnh
+  // Upload image
   const handleUpload = ({ file }) => {
     setPerfume((prev) => ({
       ...prev,
-      image: file.originFileObj, // ✅ lấy file thật để gửi qua FormData
+      image: file.originFileObj || file,
     }));
   };
 
-  // 🟢 Gửi form
+  // Submit form
   const handleSubmit = async (e) => {
     e.preventDefault();
     console.log("🚀 Form submit started:", { isEdit, perfume });
     try {
       const formData = new FormData();
-      const perfumeData = {
-        ...perfume,
-        brand: typeof perfume.brand === "object" ? perfume.brand.name : perfume.brand,
-      };
+      
+      // Lấy brand name
+      const brandName = typeof perfume.brand === "object" ? perfume.brand.name : perfume.brand;
   
-      console.log("📦 Perfume data to submit:", perfumeData);
+      console.log("📦 Perfume data to submit:", perfume);
       console.log("🖼️ Image file:", perfume.image);
   
-      Object.entries(perfumeData).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-          formData.append(key, value);
-          console.log(`📝 Added to FormData: ${key} = ${value}`);
-        }
-      });
+      // Add fields to FormData
+      formData.append("perfumeName", perfume.perfumeName || "");
+      formData.append("price", perfume.price || "");
+      formData.append("concentration", perfume.concentration || "");
+      formData.append("gender", perfume.gender || "");
+      formData.append("brand", brandName || "");
+      formData.append("volume", perfume.volume || "");
+      formData.append("targetAudience", perfume.targetAudience || "");
+      formData.append("uri", perfume.uri || "");
+      formData.append("ingredients", perfume.ingredients || "");
+      formData.append("description", perfume.description || "");
+      
+      // Add image if exists
+      if (perfume.image && perfume.image instanceof File) {
+        formData.append("image", perfume.image);
+        console.log("📝 Added image to FormData:", perfume.image.name);
+      }
   
       if (isEdit) {
-        // 🔁 Cập nhật
+        // Update
         console.log("🔄 Updating perfume with ID:", id);
         const response = await api.put(`/api/perfumes/${id}`, formData, {
           withCredentials: true,
+          headers: { "Content-Type": "multipart/form-data" },
         });
         console.log("✅ Update response:", response.data);
-        message.success("Cập nhật nước hoa thành công!");
+        message.success("Perfume updated successfully!");
       } else {
-        // 🆕 Thêm mới
+        // Add new
         console.log("➕ Creating new perfume");
         const response = await api.post("/api/perfumes", formData, {
           withCredentials: true,
           headers: { "Content-Type": "multipart/form-data" },
         });
         console.log("✅ Create response:", response.data);
-        message.success("Thêm nước hoa mới thành công!");
+        message.success("New perfume added successfully!");
       }
   
       console.log("🏠 Navigating to /admin/perfumes");
       navigate("/admin/perfumes");
     } catch (err) {
       console.error("❌ Lỗi khi lưu nước hoa:", err.response?.data || err.message);
-      setError("Không thể lưu dữ liệu. Vui lòng thử lại!");
+      setError("Failed to save data. Please try again!");
     }
   };
   
@@ -130,14 +142,14 @@ export default function PerfumeForm() {
       <div className="ml-56 flex-1 flex justify-center mt-28">
         <div className="bg-[#151515] p-9 rounded-xl w-[700px] shadow-[0_0_20px_rgba(255,0,50,0.2)]">
           <h2 className="text-center text-[#c41e3a] text-2xl font-semibold mb-6 uppercase">
-            {isEdit ? "Chỉnh sửa nước hoa" : "Thêm nước hoa mới"}
+            {isEdit ? "Edit Perfume" : "Add New Perfume"}
           </h2>
 
           {error && <p className="text-[#ff5050] text-center mb-4 font-medium">{error}</p>}
 
           <form onSubmit={handleSubmit}>
-            {/* 🧴 Tên nước hoa */}
-            <label className="block mb-2 text-[#ccc] font-medium">Tên nước hoa *</label>
+            {/* Perfume Name */}
+            <label className="block mb-2 text-[#ccc] font-medium">Perfume Name *</label>
             <input
               type="text"
               name="perfumeName"
@@ -147,8 +159,8 @@ export default function PerfumeForm() {
               className="w-full p-3 mb-4 rounded-md bg-[#222] text-white border-none outline-none focus:ring-2 focus:ring-[#c41e3a]"
             />
 
-            {/* 💸 Giá */}
-            <label className="block mb-2 text-[#ccc] font-medium">Giá (VND)</label>
+            {/* Price */}
+            <label className="block mb-2 text-[#ccc] font-medium">Price (VND)</label>
             <input
               type="number"
               name="price"
@@ -158,16 +170,16 @@ export default function PerfumeForm() {
             />
 
             <div className="grid grid-cols-2 gap-4">
-              {/* 🌫 Nồng độ */}
+              {/* Concentration */}
               <div>
-                <label className="block mb-2 text-[#ccc] font-medium">Nồng độ</label>
+                <label className="block mb-2 text-[#ccc] font-medium">Concentration</label>
                 <select
                   name="concentration"
                   value={perfume.concentration}
                   onChange={handleChange}
                   className="w-full p-3 mb-4 rounded-md bg-[#222] text-white border-none outline-none focus:ring-2 focus:ring-[#c41e3a]"
                 >
-                  <option value="">-- Chọn --</option>
+                  <option value="">-- Select --</option>
                   <option value="EDP">EDP</option>
                   <option value="EDT">EDT</option>
                   <option value="Extrait">Extrait</option>
@@ -175,38 +187,38 @@ export default function PerfumeForm() {
                 </select>
               </div>
 
-              {/* 🚻 Giới tính */}
+              {/* Gender */}
               <div>
-                <label className="block mb-2 text-[#ccc] font-medium">Giới tính</label>
+                <label className="block mb-2 text-[#ccc] font-medium">Gender</label>
                 <select
                   name="gender"
                   value={perfume.gender}
                   onChange={handleChange}
                   className="w-full p-3 mb-4 rounded-md bg-[#222] text-white border-none outline-none focus:ring-2 focus:ring-[#c41e3a]"
                 >
-                  <option value="">-- Chọn --</option>
-                  <option value="Nam">Nam</option>
-                  <option value="Nữ">Nữ</option>
+                  <option value="">-- Select --</option>
+                  <option value="Nam">Male</option>
+                  <option value="Nữ">Female</option>
                   <option value="Unisex">Unisex</option>
                 </select>
               </div>
             </div>
 
-            {/* 🏷 Thương hiệu */}
-            <label className="block mb-2 text-[#ccc] font-medium">Thương hiệu</label>
+            {/* Brand */}
+            <label className="block mb-2 text-[#ccc] font-medium">Brand</label>
             <select
               name="brand"
               value={perfume.brand}
               onChange={(e) =>
                 setPerfume({
                   ...perfume,
-                  brand: e.target.value, // ✅ Lưu brandName
+                  brand: e.target.value,
                 })
               }
               disabled={isEdit}
               className="w-full p-3 mb-4 rounded-md bg-[#222] text-white border-none outline-none focus:ring-2 focus:ring-[#c41e3a]"
             >
-              <option value="">-- Chọn thương hiệu --</option>
+              <option value="">-- Select Brand --</option>
               {brands.map((b) => (
                 <option key={b._id} value={b.name}>
                   {b.name}
@@ -215,9 +227,9 @@ export default function PerfumeForm() {
             </select>
 
             <div className="grid grid-cols-2 gap-4">
-              {/* 📦 Dung tích */}
+              {/* Volume */}
               <div>
-                <label className="block mb-2 text-[#ccc] font-medium">Dung tích (ml)</label>
+                <label className="block mb-2 text-[#ccc] font-medium">Volume (ml)</label>
                 <input
                   type="number"
                   name="volume"
@@ -227,25 +239,36 @@ export default function PerfumeForm() {
                 />
               </div>
 
-              {/* 👤 Đối tượng */}
+              {/* Target Audience */}
               <div>
-                <label className="block mb-2 text-[#ccc] font-medium">Đối tượng</label>
+                <label className="block mb-2 text-[#ccc] font-medium">Target Audience</label>
                 <select
                   name="targetAudience"
                   value={perfume.targetAudience}
                   onChange={handleChange}
                   className="w-full p-3 mb-4 rounded-md bg-[#222] text-white border-none outline-none focus:ring-2 focus:ring-[#c41e3a]"
                 >
-                  <option value="">-- Chọn --</option>
-                  <option value="male">Nam</option>
-                  <option value="female">Nữ</option>
+                  <option value="">-- Select --</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
                   <option value="unisex">Unisex</option>
                 </select>
               </div>
             </div>
 
-            {/* 🌿 Thành phần */}
-            <label className="block mb-2 text-[#ccc] font-medium">Thành phần</label>
+            {/* URL */}
+            <label className="block mb-2 text-[#ccc] font-medium">URL (Product Link)</label>
+            <input
+              type="text"
+              name="uri"
+              value={perfume.uri}
+              onChange={handleChange}
+              placeholder="https://example.com/product"
+              className="w-full p-3 mb-4 rounded-md bg-[#222] text-white border-none outline-none focus:ring-2 focus:ring-[#c41e3a]"
+            />
+
+            {/* Ingredients */}
+            <label className="block mb-2 text-[#ccc] font-medium">Ingredients</label>
             <textarea
               name="ingredients"
               rows="3"
@@ -254,8 +277,8 @@ export default function PerfumeForm() {
               className="w-full p-3 rounded-md bg-[#222] text-white border-none outline-none resize-y focus:ring-2 focus:ring-[#c41e3a] mb-4"
             />
 
-            {/* 📖 Mô tả */}
-            <label className="block mb-2 text-[#ccc] font-medium">Mô tả</label>
+            {/* Description */}
+            <label className="block mb-2 text-[#ccc] font-medium">Description</label>
             <textarea
               name="description"
               rows="4"
@@ -264,8 +287,8 @@ export default function PerfumeForm() {
               className="w-full p-3 rounded-md bg-[#222] text-white border-none outline-none resize-y focus:ring-2 focus:ring-[#c41e3a] mb-4"
             />
 
-            {/* 🖼 Ảnh */}
-            <label className="block mb-2 text-[#ccc] font-medium">Hình ảnh nước hoa</label>
+            {/* Image */}
+            <label className="block mb-2 text-[#ccc] font-medium">Perfume Image</label>
             <Upload
               beforeUpload={() => false}
               maxCount={1}
@@ -274,17 +297,17 @@ export default function PerfumeForm() {
               className="mb-4"
             >
               <Button icon={<UploadOutlined />} className="bg-[#222] text-white border-none">
-                Chọn ảnh
+                Select Image
               </Button>
             </Upload>
 
-            {/* ⚙️ Nút hành động */}
+            {/* Action Buttons */}
             <div className="grid grid-cols-2 gap-5 mt-6">
               <button
                 type="submit"
                 className="bg-[#c41e3a] hover:bg-[#a0142e] text-white py-3 rounded-md flex justify-center items-center gap-2 font-medium transition"
               >
-                <FaFloppyDisk /> {isEdit ? "Cập nhật" : "Lưu"}
+                <FaFloppyDisk /> {isEdit ? "Update" : "Save"}
               </button>
 
               <button
@@ -292,7 +315,7 @@ export default function PerfumeForm() {
                 onClick={() => navigate("/admin/perfumes")}
                 className="bg-[#333] hover:bg-[#444] text-white py-3 rounded-md flex justify-center items-center gap-2 font-medium transition"
               >
-                <FaArrowLeft /> Quay lại
+                <FaArrowLeft /> Back
               </button>
             </div>
           </form>

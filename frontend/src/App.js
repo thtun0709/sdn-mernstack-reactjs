@@ -3,12 +3,13 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import Home from './pages/Home';
-import PerfumeDetail from './pages/PerfumeDetail';
+import Detail from './pages/Detail';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Profile from './pages/Profile';
 import AdminPerfumeList from './pages/admin/PerfumeList';
 import AdminPerfumeForm from './pages/admin/PerfumeForm';
+import AdminPerfumeDetail from "./pages/admin/PerfumeDetail";
 import AdminUserList from './pages/admin/UserList';
 import BrandList from './pages/admin/BrandList';
 import BrandForm from './pages/admin/BrandForm'; // ✅ thêm import cho form brand
@@ -24,7 +25,7 @@ export default function App() {
         <Routes>
           {/* --- Public pages --- */}
           <Route path="/" element={<Home />} />
-          <Route path="/perfumes/:id" element={<PerfumeDetail />} />
+          <Route path="/perfumes/:id" element={<Detail />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
 
@@ -44,6 +45,14 @@ export default function App() {
             element={
               <ProtectedRoute adminOnly>
                 <AdminPerfumeList />
+              </ProtectedRoute>
+            }
+          />
+           <Route
+            path="/admin/perfumes/:id"
+            element={
+              <ProtectedRoute adminOnly>
+                <AdminPerfumeDetail />
               </ProtectedRoute>
             }
           />

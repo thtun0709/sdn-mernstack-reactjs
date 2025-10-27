@@ -1,0 +1,60 @@
+/* Custom styling for Select dropdowns in Home page */
+.custom-select .ant-select-selector {
+  background-color: rgba(17, 17, 17, 0.8) !important;
+  border: 1px solid rgba(51, 51, 51, 0.8) !important;
+  color: white !important;
+}
+
+.custom-select .ant-select-selection-placeholder {
+  color: rgba(255, 255, 255, 0.5) !important;
+}
+
+.custom-select .ant-select-selection-item {
+  color: white !important;
+}
+
+.custom-select .ant-select-arrow {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+
+.custom-select:hover .ant-select-selector {
+  border-color: rgba(196, 30, 58, 0.6) !important;
+}
+
+.custom-select.ant-select-focused .ant-select-selector {
+  border-color: #c41e3a !important;
+  box-shadow: 0 0 0 2px rgba(196, 30, 58, 0.2) !important;
+}
+
+/* Dropdown menu styling */
+.ant-select-dropdown {
+  background-color: rgba(17, 17, 17, 0.95) !important;
+  border: 1px solid rgba(51, 51, 51, 0.8) !important;
+  backdrop-filter: blur(10px);
+}
+
+.ant-select-item {
+  color: white !important;
+}
+
+.ant-select-item-option-selected {
+  background-color: rgba(196, 30, 58, 0.3) !important;
+}
+
+.ant-select-item-option-active {
+  background-color: rgba(196, 30, 58, 0.2) !important;
+}
+
+.ant-select-item:hover {
+  background-color: rgba(196, 30, 58, 0.15) !important;
+}
+
+/* Clear icon styling */
+.custom-select .ant-select-clear {
+  background-color: rgba(17, 17, 17, 0.8);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.custom-select .ant-select-clear:hover {
+  color: white;
+}

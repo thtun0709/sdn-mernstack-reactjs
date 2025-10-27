@@ -27,7 +27,7 @@ export default function BrandForm() {
                 const res = await api.get("/api/brands");
                 setAllBrands(res.data || []);
             } catch {
-                console.error("Không thể tải danh sách thương hiệu.");
+                console.error("Can not fetch all brands");
             }
         };
         fetchBrands();
@@ -36,7 +36,7 @@ export default function BrandForm() {
             api
                 .get(`/api/brands/${id}`)
                 .then((res) => setBrand(res.data))
-                .catch(() => setError("Không tải được dữ liệu thương hiệu."));
+                .catch(() => setError("Can not fetch brand data."));
         }
     }, [id, isEdit]);
 
@@ -49,7 +49,7 @@ export default function BrandForm() {
         e.preventDefault();
         try {
             if (!brand.name.trim() && !isEdit) {
-                setError("Tên thương hiệu là bắt buộc.");
+                setError("Brand name is required.");
                 return;
             }
 
@@ -59,22 +59,22 @@ export default function BrandForm() {
                     b._id !== id
             );
             if (exists) {
-                message.error("Đã có brand nước hoa này rồi!");
+                message.error("This perfume brand already exists!");
                 return;
               }
 
             if (isEdit) {
                 await api.put(`/api/brands/${id}`, brand);
-                message.success("Cập nhật thương hiệu thành công!");
+                message.success("Update brand successfully!");
             } else {
                 await api.post("/api/brands", brand);
-                message.success("Thêm thương hiệu mới thành công!");
+                message.success("Add new brand successfully!");
             }
 
             navigate("/admin/brands");
         } catch (err) {
             console.error(err);
-            setError("Lưu dữ liệu thất bại. Vui lòng thử lại!");
+            setError("Failed to save data. Please try again!");
         }
     };
 
@@ -85,7 +85,7 @@ export default function BrandForm() {
             <div className="ml-56 flex-1 flex justify-center mt-28">
                 <div className="bg-[#151515] p-9 rounded-xl w-[600px] shadow-[0_0_20px_rgba(255,0,50,0.2)]">
                     <h2 className="text-center text-[#c41e3a] text-2xl font-semibold mb-6">
-                        {isEdit ? "Chỉnh sửa thương hiệu" : "Thêm thương hiệu mới"}
+                        {isEdit ? "Edit Brand" : "Add New Brand"}
                     </h2>
 
                     {error && (
@@ -94,7 +94,7 @@ export default function BrandForm() {
 
                     <form onSubmit={handleSubmit}>
                         <label className="block mb-2 text-[#ccc] font-medium">
-                            Tên thương hiệu *
+                            Brand Name *
                         </label>
                         <input
                             type="text"
@@ -102,14 +102,14 @@ export default function BrandForm() {
                             value={brand.name}
                             onChange={handleChange}
                             required
-                            disabled={isEdit} // ✅ Không cho chỉnh sửa khi edit
+                            disabled={isEdit}
                             className={`w-full p-3 mb-4 rounded-md border-none outline-none focus:ring-2 focus:ring-[#c41e3a] ${isEdit
                                     ? "bg-[#333] text-gray-400 cursor-not-allowed"
                                     : "bg-[#222] text-white"
                                 }`}
                         />
 
-                        <label className="block mb-2 text-[#ccc] font-medium">Quốc gia</label>
+                        <label className="block mb-2 text-[#ccc] font-medium">Country</label>
                         <input
                             type="text"
                             name="country"
@@ -119,7 +119,7 @@ export default function BrandForm() {
                         />
 
                         <label className="block mb-2 text-[#ccc] font-medium">
-                            Năm thành lập
+                            Founded Year
                         </label>
                         <input
                             type="number"
@@ -141,7 +141,7 @@ export default function BrandForm() {
                             className="w-full p-3 mb-4 rounded-md bg-[#222] text-white border-none outline-none focus:ring-2 focus:ring-[#c41e3a]"
                         />
 
-                        <label className="block mb-2 text-[#ccc] font-medium">Mô tả</label>
+                        <label className="block mb-2 text-[#ccc] font-medium">Description</label>
                         <textarea
                             name="description"
                             rows="4"
@@ -155,7 +155,7 @@ export default function BrandForm() {
                                 type="submit"
                                 className="btn-action bg-[#c41e3a] hover:bg-[#a0142e] text-white py-3 rounded-md flex justify-center items-center gap-2 font-medium transition"
                             >
-                                <FaFloppyDisk /> {isEdit ? "Cập nhật" : "Lưu"}
+                                <FaFloppyDisk /> {isEdit ? "Update" : "Save"}
                             </button>
 
                             <button
@@ -163,7 +163,7 @@ export default function BrandForm() {
                                 onClick={() => navigate("/admin/brands")}
                                 className="btn-action bg-[#333] hover:bg-[#444] text-white py-3 rounded-md flex justify-center items-center gap-2 font-medium transition"
                             >
-                                <FaArrowLeft /> Quay lại
+                                <FaArrowLeft /> Back
                             </button>
                         </div>
                     </form>

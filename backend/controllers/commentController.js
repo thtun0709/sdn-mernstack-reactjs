@@ -1,76 +1,135 @@
 const Comment = require("../models/commentModel");
+const mongoose = require("mongoose");
 
-// ➤ Thêm bình luận kèm rating
+// Helper function to get user from request
+function getUserFromRequest(req) {
+  // Try JWT token first (from AuthProvider)
+  if (req.user && req.user._id) {
+    return req.user;
+  }
+  // Fallback to session
+  if (req.session && req.session.member) {
+    return req.session.member;
+  }
+  return null;
+}
+
+// ➤ Add comment with rating (API for React)
 exports.addComment = async (req, res) => {
   try {
     const { content, rating } = req.body;
     const perfumeId = req.params.id;
-    const userId = req.session.member?._id;
+    const user = getUserFromRequest(req);
+    
+    console.log("🔍 Add comment debug:", {
+      perfumeId,
+      user,
+      hasSession: !!req.session?.member,
+      hasJWT: !!req.user,
+      content,
+      rating
+    });
 
-    if (!userId) {
-      return res.status(401).send("Bạn cần đăng nhập để bình luận");
+    if (!user || !user._id) {
+      return res.status(401).json({ error: "You need to login to comment" });
     }
 
-    // 🔒 Mỗi user chỉ được comment 1 lần mỗi sản phẩm
+    const userId = user._id;
+
+    // Only allow 1 comment per user per product
     const existing = await Comment.findOne({ perfumeId, userId });
     if (existing) {
-      return res.redirect(`/perfumes/${perfumeId}?error=already_commented`);
+      return res.status(400).json({ error: "You have already commented on this product" });
     }
 
-    const newComment = new Comment({ perfumeId, userId, content, rating });
+    if (!content || !rating) {
+      return res.status(400).json({ error: "Content and rating are required" });
+    }
+
+    if (rating < 1 || rating > 3) {
+      return res.status(400).json({ error: "Rating must be between 1 and 3" });
+    }
+
+    const newComment = new Comment({ 
+      perfumeId, 
+      userId, 
+      content: content.trim(), 
+      rating: Number(rating) 
+    });
     await newComment.save();
 
-    res.redirect(`/perfumes/${perfumeId}#comments`);
+    console.log("✅ Comment created:", newComment);
+
+    res.status(201).json({ message: "Comment added successfully", comment: newComment });
   } catch (err) {
-    console.error(err);
-    res.status(500).send("Lỗi khi gửi bình luận");
+    console.error("❌ Error adding comment:", err);
+    console.error("❌ Error stack:", err.stack);
+    console.error("❌ Error name:", err.name);
+    console.error("❌ Error message:", err.message);
+    res.status(500).json({ error: "Failed to add comment" });
   }
 };
 
-
-// ➤ Sửa bình luận
+// ➤ Edit comment (API for React)
 exports.editComment = async (req, res) => {
   try {
     const { content, rating } = req.body;
     const commentId = req.params.id;
-    const member = req.session.member;
+    const user = getUserFromRequest(req);
 
-    const comment = await Comment.findById(commentId);
-    if (!comment) return res.status(404).send("Không tìm thấy bình luận");
-
-    // chỉ chủ hoặc admin mới được sửa
-    if (comment.userId.toString() !== member._id.toString() && member.role !== "admin") {
-      return res.status(403).send("Không có quyền chỉnh sửa bình luận này");
+    if (!user || !user._id) {
+      return res.status(401).json({ error: "You need to login" });
     }
 
-    comment.content = content;
-    comment.rating = Number(rating) || comment.rating;
+    const comment = await Comment.findById(commentId);
+    if (!comment) {
+      return res.status(404).json({ error: "Comment not found" });
+    }
+
+    // Only owner or admin can edit
+    if (comment.userId.toString() !== user._id.toString() && user.role !== "admin") {
+      return res.status(403).json({ error: "You don't have permission to edit this comment" });
+    }
+
+    if (content) comment.content = content.trim();
+    if (rating) comment.rating = Number(rating);
+    
     await comment.save();
 
-    res.redirect(`/perfumes/${comment.perfumeId}#comments`);
+    res.json({ message: "Comment updated successfully", comment });
   } catch (err) {
-    console.error("❌ Lỗi khi sửa bình luận:", err);
-    res.status(500).send("Lỗi khi chỉnh sửa bình luận");
+    console.error("❌ Error editing comment:", err);
+    res.status(500).json({ error: "Failed to update comment" });
   }
 };
 
-// ➤ Xóa bình luận
+// ➤ Delete comment (API for React)
 exports.deleteComment = async (req, res) => {
   try {
-    const comment = await Comment.findById(req.params.id);
-    if (!comment) return res.status(404).send("Không tìm thấy bình luận");
+    const commentId = req.params.id;
+    const user = getUserFromRequest(req);
 
-    const member = req.session.member;
-    const isOwner = member && comment.userId.toString() === member._id.toString();
-
-    if (isOwner || (member && member.role === "admin")) {
-      await Comment.findByIdAndDelete(req.params.id);
-      res.redirect(`/perfumes/${comment.perfumeId}#comments`);
-    } else {
-      res.status(403).send("Không có quyền xóa bình luận này");
+    if (!user || !user._id) {
+      return res.status(401).json({ error: "You need to login" });
     }
+
+    const comment = await Comment.findById(commentId);
+    if (!comment) {
+      return res.status(404).json({ error: "Comment not found" });
+    }
+
+    // Only owner or admin can delete
+    const isOwner = comment.userId.toString() === user._id.toString();
+    const isAdmin = user.role === "admin";
+
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({ error: "You don't have permission to delete this comment" });
+    }
+
+    await Comment.findByIdAndDelete(commentId);
+    res.json({ message: "Comment deleted successfully" });
   } catch (err) {
-    console.error("❌ Lỗi khi xóa bình luận:", err);
-    res.status(500).send("Lỗi khi xóa bình luận");
+    console.error("❌ Error deleting comment:", err);
+    res.status(500).json({ error: "Failed to delete comment" });
   }
 };

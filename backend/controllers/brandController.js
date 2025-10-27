@@ -211,10 +211,33 @@ exports.apiUpdateBrand = async (req, res) => {
 exports.apiDeleteBrand = async (req, res) => {
   try {
     const brand = await Brand.findById(req.params.id);
-    if (!brand) return res.status(404).json({ message: "Brand not found" });
+    if (!brand) {
+      console.log("❌ Brand not found:", req.params.id);
+      return res.status(404).json({ message: "Brand not found" });
+    }
 
+    console.log("🔍 Checking perfumes for brand:", brand.name);
+    
+    // Kiểm tra xem có perfume nào đang sử dụng brand này không
+    const perfumeCount = await Perfume.countDocuments({ brand: brand.name });
+    
+    console.log("📊 Perfume count:", perfumeCount);
+    
+    if (perfumeCount > 0) {
+      console.log("⚠️ Cannot delete brand, has perfumes");
+      return res.status(400).json({ 
+        message: `Không thể xóa thương hiệu này vì có ${perfumeCount} nước hoa đang sử dụng`,
+        perfumeCount: perfumeCount,
+        canDelete: false
+      });
+    }
+
+    console.log("✅ Deleting brand:", brand.name);
     await Brand.findByIdAndDelete(req.params.id);
-    res.json({ message: "Brand deleted successfully" });
+    res.json({ 
+      message: "Xóa thương hiệu thành công",
+      canDelete: true
+    });
   } catch (err) {
     console.error("❌ apiDeleteBrand:", err);
     res.status(500).json({ message: "Error deleting brand" });
