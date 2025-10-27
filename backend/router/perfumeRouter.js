@@ -5,33 +5,13 @@ const commentController = require("../controllers/commentController");
 const { isAuthenticated, isAdmin } = require("../middlewares/authMiddleware");
 const upload = require("../middlewares/uploadMiddleware");
 
-// Debug (chỉ dùng dev)
-console.log("isAdmin:", typeof isAdmin);
-console.log("upload:", typeof upload);
-console.log("addPerfume:", typeof perfumeController.addPerfume);
-
-// Admin routes
-
-router.get("/",isAdmin, perfumeController.getAllPerfumes);
-
-router.get("/add", isAdmin, perfumeController.showAddForm);
-router.post("/add", isAdmin, upload.single("image"), perfumeController.addPerfume);
-
-router.get("/edit/:id", isAdmin, perfumeController.showEditForm);
-router.post("/edit/:id", isAdmin, upload.single("image"), perfumeController.updatePerfume);
-
-router.get("/delete/:id", isAdmin, perfumeController.deletePerfume);
-
-
-// Xem chi tiết nước hoa
+// REST API routes cho React
+router.get("/", perfumeController.getAllPerfumes);
 router.get("/:id", perfumeController.getPerfumeDetail);
+router.post("/", isAuthenticated, isAdmin, upload.single("image"), perfumeController.addPerfume);
+router.put("/:id", isAuthenticated, isAdmin, upload.single("image"), perfumeController.updatePerfume);
+router.delete("/:id", isAuthenticated, isAdmin, perfumeController.deletePerfume);
 
-//bình luận
-router.post("/:id/comment", isAuthenticated, commentController.addComment);
-
-//rating
+// Optional: thêm rating/comment
 router.post("/:id/rate", isAuthenticated, perfumeController.addRating);
-
-
-router.post("/comment/edit/:id", commentController.editComment);
 module.exports = router;

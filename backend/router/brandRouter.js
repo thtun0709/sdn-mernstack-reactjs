@@ -3,16 +3,20 @@ const router = express.Router();
 const brandController = require('../controllers/brandController');
 const { isAuthenticated,isAdmin } = require('../middlewares/authMiddleware');
 
-// Tất cả routes đều yêu cầu đăng nhập
-router.use(isAuthenticated);
 
+router.get("/", async (req, res) => {
+  try {
+    const brands = await brandController.apiGetAllBrands(req, res);
+    // This will be handled by the controller, but we need to ensure consistent format
+  } catch (err) {
+    res.status(500).json({ message: "Failed to load brands" });
+  }
+});
+router.get("/:id", brandController.apiGetBrandById);
+router.post("/", isAdmin, brandController.apiAddBrand);
+router.put("/:id", isAdmin, brandController.apiUpdateBrand);
+router.delete("/:id", isAdmin, brandController.apiDeleteBrand);
 // Routes cho Brand CRUD
-router.get('/',isAdmin, brandController.getAllBrands);
-router.get('/add',isAdmin, brandController.showAddForm);
-router.post('/add',isAdmin, brandController.addBrand);
-router.get('/:id/edit',isAdmin, brandController.showEditForm);
-router.post('/:id/edit',isAdmin, brandController.updateBrand);
-router.get('/:id/delete',isAdmin, brandController.deleteBrand);
-router.get('/:id',isAdmin, brandController.getBrandDetail);
+
 
 module.exports = router;

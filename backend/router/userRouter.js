@@ -2,28 +2,22 @@ const express = require("express");
 const router = express.Router();
 const userController = require("../controllers/userController");
 const { isAuthenticated, isAdmin } = require("../middlewares/authMiddleware");
-const { isLoggedIn } = require("../middlewares/authMiddleware");
 
-console.log("userController.getAllUsers:", typeof userController.getAllUsers);
-console.log("userController.getProfile:", typeof userController.getProfile);
-console.log("isLoggedIn:", typeof isLoggedIn);
+// ✅ Chỉ admin mới xem được danh sách user
+router.get("/", isAuthenticated, isAdmin, userController.getAllUsers);
 
-// Danh sách người dùng
-router.get("/", isAdmin, userController.getAllUsers);
+// ✅ Toggle trạng thái (admin)
+router.put("/toggle/:id", isAuthenticated, isAdmin, userController.toggleUserStatus);
 
-// Khóa / Mở tài khoản
-router.get("/toggle/:id", isAdmin, userController.toggleUserStatus);
+// ✅ Xóa user (admin)
+router.delete("/:id", isAuthenticated, isAdmin, userController.deleteUser);
 
-// Xóa người dùng
-router.get("/delete/:id", isAdmin, userController.deleteUser);
 
-// Trang hồ sơ cá nhân
-router.get("/profile",  isAuthenticated, isLoggedIn, userController.getProfile);
+// ✅ Admin xem hồ sơ từng user
+router.get("/profile/:id", isAuthenticated, isAdmin, userController.getUserById);
 
-// Cập nhật hồ sơ cá nhân
+// ✅ Profile cho user đăng nhập
+router.get("/profile", isAuthenticated, userController.getProfile);
 router.post("/profile/update", isAuthenticated, userController.updateProfile);
-
-// Xem hồ sơ của user (dành cho admin)
-router.get("/profile/:id", isAdmin, userController.viewUserProfile);
 
 module.exports = router;

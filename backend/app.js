@@ -1,105 +1,126 @@
+const path = require("path");
+const dotenv = require("dotenv");
+dotenv.config({ path: path.join(__dirname, ".env") });
+console.log("📄 .env loaded ->", process.env);
+
 const express = require("express");
 const session = require("express-session");
 const MongoStore = require("connect-mongo");
-const dotenv = require("dotenv");
-const path = require("path");
 const mongoose = require("mongoose");
+const cookieParser = require("cookie-parser");
 
 
 dotenv.config();
+console.log("📄 Loaded .env from:", path.resolve(".env"));
+console.log("🔍 MONGO_URI:", process.env.MONGO_URI);
+console.log("🔐 SESSION_SECRET:", process.env.SESSION_SECRET ? "✅ Loaded" : "❌ Missing");
+console.log("🔐 JWT_SECRET:", process.env.JWT_SECRET ? "✅ Loaded" : "❌ Missing");
 
-// Kết nối MongoDB
+/* ------------------ KHỞI TẠO APP TRƯỚC TIÊN ------------------ */
+const app = express();
+
+/* ------------------ KẾT NỐI MONGODB ------------------ */
 const connectDB = async () => {
-    try {
-        await mongoose.connect(process.env.MONGO_URI);
-        console.log("✅ MongoDB connected");
-    } catch (err) {
-        console.error("❌ MongoDB connection failed:", err.message);
-        process.exit(1);
-    }
+  try {
+    await mongoose.connect(process.env.MONGO_URI, {
+      dbName: "perfume-app", // bắt buộc cho localhost
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    });
+    console.log("✅ MongoDB connected:", process.env.MONGO_URI);
+  } catch (err) {
+    console.error("❌ MongoDB connection failed:", err.message);
+    process.exit(1);
+  }
 };
 connectDB();
 
-const app = express();
+/* ------------------ CORS ------------------ */
+app.use((req, res, next) => {
+  const allowedOrigins = ['http://localhost:3001', 'http://localhost:3000'];
+  const origin = req.headers.origin;
 
-// const path = require("path"); //up imgae lên
-// app.use(express.static(path.join(__dirname, "public")));
+  if (allowedOrigins.includes(origin)) {
+    res.header('Access-Control-Allow-Origin', origin);
+  }
 
-// Middleware cơ bản
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  res.header('Access-Control-Allow-Credentials', 'true');
+
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  next();
+});
+
+
+/* ------------------ MIDDLEWARE CƠ BẢN ------------------ */
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
-app.use(express.static(path.join(__dirname, "public")));
-const cookieParser = require('cookie-parser');
 app.use(cookieParser());
+app.use(express.static(path.join(__dirname, "public")));
 
-// EJS setup (giữ cho các trang admin cũ nếu cần)
+/* ------------------ VIEW ENGINE (EJS) ------------------ */
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
 
-// Session setup
+console.log("🔍 MONGO_URI:", process.env.MONGO_URI);
+console.log("🔐 SESSION_SECRET:", process.env.SESSION_SECRET ? "Loaded ✅" : "❌ Missing");
+
+/* ------------------ SESSION ------------------ */
 app.use(
-    session({
-        secret: process.env.SESSION_SECRET,
-        resave: false,
-        saveUninitialized: false,
-        store: MongoStore.create({ mongoUrl: process.env.MONGO_URI }),
-    })
+  session({
+    secret: process.env.SESSION_SECRET,
+    resave: false,
+    saveUninitialized: false,
+    store: MongoStore.create({
+      mongoUrl: process.env.MONGO_URI,
+      dbName: "perfume-app",
+      collectionName: "sessions",
+      ttl: 1000 * 60 * 60 * 24 * 7, // 7 ngày
+    }),
+    cookie: {
+      httpOnly: true,
+      secure: false,
+      maxAge: 1000 * 60 * 60 * 24, // 1 ngày
+      sameSite: 'lax', // Thêm sameSite để tránh vấn đề CORS
+    },
+  })
 );
 
-
-
-// Route cơ bản
-// const expressLayouts = require('express-ejs-layouts');
-// app.use(expressLayouts);
-
+/* ------------------ IMPORT MIDDLEWARES ------------------ */
 const { sessionData } = require("./middlewares/sessionMiddleware");
 const { isLoggedIn } = require("./middlewares/authMiddleware");
-app.use(sessionData);   
+app.use(sessionData);
 app.use(isLoggedIn);
 
-const authRoutes = require("./router/authRouter");
-app.use("/", authRoutes);
+/* ------------------ ROUTES ------------------ */
+app.use("/api/auth", require("./router/authRouter"));
+app.use("/api/users", require("./router/userRouter"));
+app.use("/api/perfumes", require("./router/perfumeRouter"));
+app.use("/api/brands", require("./router/brandRouter"));
+app.use("/api/comments", require("./router/commentRouter"));
+app.use("/api", require("./router/apiRouter"));
 
-const perfumeRouter = require('./router/perfumeRouter');
-app.use('/perfumes', perfumeRouter);
+/* ------------------ REACT FRONTEND ------------------ */
+// Tạm thời comment để tránh lỗi build folder không tồn tại
+// const frontendBuildPath = path.join(__dirname, "../frontend/build");
+// app.use(express.static(frontendBuildPath));
 
-const brandRouter = require('./router/brandRouter');
-app.use('/brands', brandRouter);
+// React Router catch-all (Express 5 syntax)
+// app.get(/^(?!\/(api|uploads|comments|users|perfumes|brands)).*/, (req, res) => {
+//   res.sendFile(path.join(frontendBuildPath, "index.html"));
+// });
 
-
-// Bỏ render trang chủ EJS để ưu tiên React build phục vụ FE
-
-
-//route cho user
-const userRouter = require("./router/userRouter");
-app.use("/users", userRouter);
-
-// Comment routes 
-const commentRouter = require("./router/commentRouter");
-app.use("/comments", commentRouter);
-
-// JSON API (JWT)
-const apiRouter = require('./router/apiRouter');
-app.use('/api', apiRouter);
-
-// Serve React build (frontend)
-const frontendBuildPath = path.join(__dirname, '../frontend/build');
-app.use(express.static(frontendBuildPath));
-
-// Catch-all: return React index.html for non-API routes
-// ✅ Express 5 compatible catch-all
-app.get(/^(?!\/(api|uploads|comments|users|perfumes|brands)).*/, (req, res) => {
-    res.sendFile(path.join(frontendBuildPath, 'index.html'));
-  });
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🚀 Server chạy tại http://localhost:${PORT}`));
-
+/* ------------------ CACHE CONTROL ------------------ */
 app.use((req, res, next) => {
-    res.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
-    res.set("Pragma", "no-cache");
-    res.set("Expires", "0");
-    next();
-  });
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
+  res.set("Pragma", "no-cache");
+  res.set("Expires", "0");
+  next();
+});
 
-
+/* ------------------ START SERVER ------------------ */
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`🚀 Server chạy tại http://localhost:${PORT}`));

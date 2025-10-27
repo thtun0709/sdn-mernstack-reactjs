@@ -10,7 +10,11 @@ import Profile from './pages/Profile';
 import AdminPerfumeList from './pages/admin/PerfumeList';
 import AdminPerfumeForm from './pages/admin/PerfumeForm';
 import AdminUserList from './pages/admin/UserList';
+import BrandList from './pages/admin/BrandList';
+import BrandForm from './pages/admin/BrandForm'; // ✅ thêm import cho form brand
+import BrandDetail from './pages/admin/BrandDetail';
 import ProtectedRoute from './routes/ProtectedRoute';
+import UserProfile from './pages/admin/UserProfile';
 
 export default function App() {
   return (
@@ -18,28 +22,102 @@ export default function App() {
       <Header />
       <main className="flex-1 container mx-auto px-4 py-8">
         <Routes>
+          {/* --- Public pages --- */}
           <Route path="/" element={<Home />} />
           <Route path="/perfumes/:id" element={<PerfumeDetail />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
 
-          <Route path="/profile" element={
-            <ProtectedRoute><Profile /></ProtectedRoute>
-          } />
+          {/* --- Profile (user protected) --- */}
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <Profile />
+              </ProtectedRoute>
+            }
+          />
 
-          <Route path="/admin/perfumes" element={
-            <ProtectedRoute adminOnly><AdminPerfumeList /></ProtectedRoute>
-          } />
-          <Route path="/admin/perfumes/add" element={
-            <ProtectedRoute adminOnly><AdminPerfumeForm /></ProtectedRoute>
-          } />
-          <Route path="/admin/perfumes/edit/:id" element={
-            <ProtectedRoute adminOnly><AdminPerfumeForm /></ProtectedRoute>
-          } />
-          <Route path="/admin/users" element={
-            <ProtectedRoute adminOnly><AdminUserList /></ProtectedRoute>
-          } />
+          {/* --- Admin: Perfume --- */}
+          <Route
+            path="/admin/perfumes"
+            element={
+              <ProtectedRoute adminOnly>
+                <AdminPerfumeList />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/perfumes/add"
+            element={
+              <ProtectedRoute adminOnly>
+                <AdminPerfumeForm />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/perfumes/edit/:id"
+            element={
+              <ProtectedRoute adminOnly>
+                <AdminPerfumeForm />
+              </ProtectedRoute>
+            }
+          />
 
+          {/* --- Admin: Users --- */}
+          <Route
+            path="/admin/users"
+            element={
+              <ProtectedRoute adminOnly>
+                <AdminUserList />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/users/:id"
+            element={
+              <ProtectedRoute adminOnly>
+                <UserProfile />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* --- Admin: Brands --- */}
+          <Route
+            path="/admin/brands"
+            element={
+              <ProtectedRoute adminOnly>
+                <BrandList />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/brands/add"
+            element={
+              <ProtectedRoute adminOnly>
+                <BrandForm />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/brands/edit/:id"
+            element={
+              <ProtectedRoute adminOnly>
+                <BrandForm />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/brands/:id"
+            element={
+              <ProtectedRoute adminOnly>
+                <BrandDetail />
+              </ProtectedRoute>
+            }
+          />
+
+
+          {/* --- Default redirect --- */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>

@@ -1,15 +1,14 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Button, Dropdown, Avatar, Typography, Drawer } from 'antd';
+import { Button, Dropdown, Avatar, Typography, Drawer, message } from 'antd';
 import { useAuth } from '../contexts/AuthProvider';
-import { 
-  MenuOutlined, 
-  UserOutlined, 
-  LogoutOutlined, 
-  HomeOutlined, 
+import { App } from 'antd';
+import {
+  MenuOutlined,
+  UserOutlined,
+  LogoutOutlined,
+  HomeOutlined,
   SettingOutlined,
-  ShoppingCartOutlined,
-  HeartOutlined
 } from '@ant-design/icons';
 
 const { Text } = Typography;
@@ -18,46 +17,50 @@ export default function Header() {
   const { member, logout } = useAuth();
   const navigate = useNavigate();
   const [drawerVisible, setDrawerVisible] = useState(false);
+  const { message } = App.useApp();
 
-  const handleLogout = () => {
-    logout();
-    navigate('/');
-    setDrawerVisible(false);
+
+  const handleLogout = async () => {
+    try {
+      console.log("🔄 Bắt đầu logout process...");
+      await logout(); // đợi gọi API /api/auth/logout
+      console.log("✅ Logout API thành công");
+      message.success("Đăng xuất thành công!");
+      navigate('/');
+    } catch (err) {
+      console.error("❌ Lỗi khi logout:", err);
+      // Vẫn navigate về home page ngay cả khi có lỗi
+      message.success("Đã đăng xuất!");
+      navigate('/');
+    } finally {
+      setDrawerVisible(false);
+    }
   };
+  
 
   const userMenuItems = [
-    { 
-      key: 'profile', 
-      label: <Link to="/profile" className="flex items-center gap-2"><UserOutlined />Profile</Link>,
+    {
+      key: 'profile',
+      label: <Link to="/profile" className="flex items-center gap-2">Profile</Link>,
       icon: <UserOutlined />
     },
-    { 
-      key: 'wishlist', 
-      label: <Link to="/wishlist" className="flex items-center gap-2"><HeartOutlined />Wishlist</Link>,
-      icon: <HeartOutlined />
-    },
-    { 
-      key: 'cart', 
-      label: <Link to="/cart" className="flex items-center gap-2"><ShoppingCartOutlined />Cart</Link>,
-      icon: <ShoppingCartOutlined />
-    },
     { type: 'divider' },
-    { 
-      key: 'logout', 
-      label: <span onClick={handleLogout} className="flex items-center gap-2 text-red-400"><LogoutOutlined />Logout</span>,
+    {
+      key: 'logout',
+      label: <span onClick={handleLogout} className="flex items-center gap-2 text-red-400">Logout</span>,
       icon: <LogoutOutlined />
     }
   ];
 
   const adminMenuItems = [
-    { 
-      key: 'perfumes', 
-      label: <Link to="/admin/perfumes" className="flex items-center gap-2"><SettingOutlined />Manage Perfumes</Link>,
+    {
+      key: 'perfumes',
+      label: <Link to="/admin/perfumes" className="flex items-center gap-2">Manage Perfumes</Link>,
       icon: <SettingOutlined />
     },
-    { 
-      key: 'users', 
-      label: <Link to="/admin/users" className="flex items-center gap-2"><UserOutlined />Manage Users</Link>,
+    {
+      key: 'users',
+      label: <Link to="/admin/users" className="flex items-center gap-2">Manage Users</Link>,
       icon: <UserOutlined />
     }
   ];
@@ -77,36 +80,34 @@ export default function Header() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             {/* Logo */}
-            <Link to="/" className="flex items-center gap-3 group">
-              <div className="w-10 h-10 bg-gradient-to-r from-red-500 to-pink-500 rounded-full flex items-center justify-center">
-                <span className="text-white font-bold text-lg">P</span>
-              </div>
-              <div>
-                <Text className="text-2xl font-bold text-white group-hover:text-red-400 transition-colors">
-                  Perfume House
-                </Text>
-                <div className="text-xs text-gray-400 -mt-1">Luxury Fragrances</div>
+            <Link to="/" className="flex items-center gap-2 group">
+              {/* Logo Text */}
+              <div className="leading-tight">
+                <h1 className="text-[35px] font-serif font-semibold text-[#c41e3a] uppercase tracking-wide transition-colors">
+                  <span className="text-white">Perfume</span> House
+                </h1>
               </div>
             </Link>
 
+
             {/* Desktop Navigation */}
             <nav className="hidden lg:flex items-center gap-6">
-              <Link 
-                to="/" 
+              <Link
+                to="/"
                 className="text-white hover:text-red-400 transition-colors font-medium flex items-center gap-2"
               >
                 <HomeOutlined />
                 Home
               </Link>
-              
+
               {member?.role === 'admin' && (
-                <Dropdown 
+                <Dropdown
                   menu={{ items: adminMenuItems }}
                   placement="bottomRight"
                   trigger={['hover']}
                 >
-                  <Button 
-                    type="text" 
+                  <Button
+                    type="text"
                     className="text-white hover:text-red-400 hover:bg-red-500/10 flex items-center gap-2"
                   >
                     <SettingOutlined />
@@ -120,14 +121,14 @@ export default function Header() {
             <div className="flex items-center gap-4">
               {member ? (
                 <div className="flex items-center gap-3">
-                  <Dropdown 
+                  <Dropdown
                     menu={{ items: userMenuItems }}
                     placement="bottomRight"
                     trigger={['hover']}
                   >
                     <div className="flex items-center gap-3 cursor-pointer hover:bg-gray-800/50 px-3 py-2 rounded-lg transition-colors">
-                      <Avatar 
-                        size={36} 
+                      <Avatar
+                        size={36}
                         className="bg-gradient-to-r from-red-500 to-pink-500"
                         icon={<UserOutlined />}
                       />
@@ -140,14 +141,14 @@ export default function Header() {
                 </div>
               ) : (
                 <div className="hidden sm:flex items-center gap-3">
-                  <Button 
-                    type="text" 
+                  <Button
+                    type="text"
                     className="text-white hover:text-red-400 hover:bg-red-500/10"
                     onClick={() => navigate('/login')}
                   >
                     Login
                   </Button>
-                  <Button 
+                  <Button
                     type="primary"
                     className="bg-gradient-to-r from-red-500 to-pink-500 border-0 hover:from-red-600 hover:to-pink-600"
                     onClick={() => navigate('/register')}

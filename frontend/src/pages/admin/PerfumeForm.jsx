@@ -1,283 +1,301 @@
-import React, { useEffect, useState } from 'react';
-import { Form, Input, Button, Upload, Select, Card, Typography, Row, Col, message } from 'antd';
-import { useNavigate, useParams } from 'react-router-dom';
-import api from '../../api/axios';
-import AdminSidebar from '../../components/AdminSidebar';
-import { SaveOutlined, UploadOutlined } from '@ant-design/icons';
-
-const { Title } = Typography;
-const { Option } = Select;
+import React, { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import AdminSidebar from "../../components/AdminSidebar";
+import { FaFloppyDisk, FaArrowLeft } from "react-icons/fa6";
+import { UploadOutlined } from "@ant-design/icons";
+import { Upload, Button, message } from "antd";
+import api from "../../api/axios";
 
 export default function PerfumeForm() {
-  const [form] = Form.useForm();
   const navigate = useNavigate();
   const { id } = useParams();
-  const [loading, setLoading] = useState(false);
   const [brands, setBrands] = useState([]);
+  const [perfume, setPerfume] = useState({
+    perfumeName: "",
+    price: "",
+    concentration: "",
+    gender: "",
+    brand: "",
+    volume: "",
+    targetAudience: "",
+    ingredients: "",
+    description: "",
+    image: null,
+  });
+  const [error, setError] = useState("");
+  const isEdit = Boolean(id);
 
+  // 🟢 Lấy danh sách thương hiệu + chi tiết nước hoa (nếu edit)
   useEffect(() => {
-    const loadBrands = async () => {
+    const fetchBrands = async () => {
       try {
-        const res = await api.get('/api/brands');
-        setBrands(res.data.brands || []);
+        const res = await api.get("/api/brands");
+        console.log("📦 Brands API response:", res.data);
+        const data = Array.isArray(res.data)
+          ? res.data
+          : res.data.brands || [];
+        setBrands(data);
       } catch (err) {
-        console.error('Failed to load brands');
+        console.error("❌ Brand API error:", err);
+        setError("Không tải được danh sách thương hiệu.");
       }
     };
-    loadBrands();
 
-    if (id) {
-      const loadPerfume = async () => {
-        try {
-          const res = await api.get(`/api/perfumes/${id}`);
-          form.setFieldsValue(res.data.perfume);
-        } catch (err) {
-          message.error('Failed to load perfume details');
-        }
-      };
-      loadPerfume();
-    }
-  }, [id, form]);
-
-  const onFinish = async (values) => {
-    setLoading(true);
-    try {
-      const fd = new FormData();
-      Object.keys(values).forEach(k => {
-        if (k === 'image' && values.image?.file) {
-          fd.append('image', values.image.file.originFileObj);
-        } else if (values[k] !== undefined && values[k] !== null) {
-          fd.append(k, values[k]);
-        }
-      });
-
-      if (id) {
-        await api.post(`/api/perfumes/edit/${id}`, fd);
-        message.success('Perfume updated successfully');
-      } else {
-        await api.post('/api/perfumes/add', fd);
-        message.success('Perfume added successfully');
+    const fetchPerfume = async () => {
+      try {
+        const res = await api.get(`/api/perfumes/${id}`);
+        const p = res.data.perfume;
+        // 🟢 Đảm bảo brand là string (name) khi hiển thị
+        setPerfume({
+          ...p,
+          brand: typeof p.brand === "object" ? p.brand.name : p.brand,
+        });
+      } catch (err) {
+        console.error("❌ Perfume API error:", err);
+        setError("Không tải được thông tin nước hoa.");
       }
+    };
 
-      navigate('/admin/perfumes');
-    } catch (err) {
-      message.error(err?.response?.data?.message || 'Failed to save perfume');
-    } finally {
-      setLoading(false);
-    }
+    fetchBrands();
+    if (isEdit) fetchPerfume();
+  }, [id, isEdit]);
+
+  // 🟢 Cập nhật input
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setPerfume((prev) => ({ ...prev, [name]: value }));
   };
 
+  // 🟢 Upload ảnh
+  const handleUpload = ({ file }) => {
+    setPerfume((prev) => ({
+      ...prev,
+      image: file.originFileObj, // ✅ lấy file thật để gửi qua FormData
+    }));
+  };
+
+  // 🟢 Gửi form
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    console.log("🚀 Form submit started:", { isEdit, perfume });
+    try {
+      const formData = new FormData();
+      const perfumeData = {
+        ...perfume,
+        brand: typeof perfume.brand === "object" ? perfume.brand.name : perfume.brand,
+      };
+  
+      console.log("📦 Perfume data to submit:", perfumeData);
+      console.log("🖼️ Image file:", perfume.image);
+  
+      Object.entries(perfumeData).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          formData.append(key, value);
+          console.log(`📝 Added to FormData: ${key} = ${value}`);
+        }
+      });
+  
+      if (isEdit) {
+        // 🔁 Cập nhật
+        console.log("🔄 Updating perfume with ID:", id);
+        const response = await api.put(`/api/perfumes/${id}`, formData, {
+          withCredentials: true,
+        });
+        console.log("✅ Update response:", response.data);
+        message.success("Cập nhật nước hoa thành công!");
+      } else {
+        // 🆕 Thêm mới
+        console.log("➕ Creating new perfume");
+        const response = await api.post("/api/perfumes", formData, {
+          withCredentials: true,
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+        console.log("✅ Create response:", response.data);
+        message.success("Thêm nước hoa mới thành công!");
+      }
+  
+      console.log("🏠 Navigating to /admin/perfumes");
+      navigate("/admin/perfumes");
+    } catch (err) {
+      console.error("❌ Lỗi khi lưu nước hoa:", err.response?.data || err.message);
+      setError("Không thể lưu dữ liệu. Vui lòng thử lại!");
+    }
+  };
+  
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
-      <div className="flex">
-        <AdminSidebar />
-        <div className="flex-1 p-6">
-          <Card 
-            className="shadow-2xl border-0"
-            style={{ 
-              background: 'rgba(255, 255, 255, 0.05)',
-              backdropFilter: 'blur(10px)',
-              borderRadius: '16px'
-            }}
-          >
-            <Title level={2} className="text-white mb-6">
-              {id ? 'Edit Perfume' : 'Add New Perfume'}
-            </Title>
-            
-            <Form 
-              form={form} 
-              onFinish={onFinish} 
-              layout="vertical" 
-              size="large"
-              className="max-w-4xl"
-            >
-              <Row gutter={16}>
-                <Col xs={24} md={12}>
-                  <Form.Item 
-                    name="perfumeName" 
-                    label={<span className="text-white">Perfume Name</span>} 
-                    rules={[{required: true, message: 'Please input perfume name!'}]}
-                  >
-                    <Input 
-                      placeholder="Enter perfume name"
-                      className="bg-gray-800 border-gray-600 text-white"
-                      style={{ background: 'rgba(0,0,0,0.3)', borderColor: '#4a5568' }}
-                    />
-                  </Form.Item>
-                </Col>
-                
-                <Col xs={24} md={12}>
-                  <Form.Item 
-                    name="price" 
-                    label={<span className="text-white">Price (VND)</span>} 
-                    rules={[{required: true, message: 'Please input price!'}]}
-                  >
-                    <Input 
-                      type="number" 
-                      placeholder="Enter price"
-                      className="bg-gray-800 border-gray-600 text-white"
-                      style={{ background: 'rgba(0,0,0,0.3)', borderColor: '#4a5568' }}
-                    />
-                  </Form.Item>
-                </Col>
-              </Row>
+    <div className="flex">
+      <AdminSidebar />
 
-              <Row gutter={16}>
-                <Col xs={24} md={8}>
-                  <Form.Item 
-                    name="concentration" 
-                    label={<span className="text-white">Concentration</span>}
-                  >
-                    <Select 
-                      placeholder="Select concentration"
-                      className="bg-gray-800 border-gray-600 text-white"
-                      style={{ background: 'rgba(0,0,0,0.3)', borderColor: '#4a5568' }}
-                    >
-                      <Option value="EDP">EDP</Option>
-                      <Option value="EDT">EDT</Option>
-                      <Option value="Extrait">Extrait</Option>
-                      <Option value="Parfum">Parfum</Option>
-                    </Select>
-                  </Form.Item>
-                </Col>
-                
-                <Col xs={24} md={8}>
-                  <Form.Item 
-                    name="gender" 
-                    label={<span className="text-white">Gender</span>}
-                  >
-                    <Select 
-                      placeholder="Select gender"
-                      className="bg-gray-800 border-gray-600 text-white"
-                      style={{ background: 'rgba(0,0,0,0.3)', borderColor: '#4a5568' }}
-                    >
-                      <Option value="Nam">Male</Option>
-                      <Option value="Nữ">Female</Option>
-                      <Option value="Unisex">Unisex</Option>
-                    </Select>
-                  </Form.Item>
-                </Col>
-                
-                <Col xs={24} md={8}>
-                  <Form.Item 
-                    name="brand" 
-                    label={<span className="text-white">Brand</span>}
-                  >
-                    <Select 
-                      placeholder="Select brand"
-                      className="bg-gray-800 border-gray-600 text-white"
-                      style={{ background: 'rgba(0,0,0,0.3)', borderColor: '#4a5568' }}
-                    >
-                      {brands.map(brand => (
-                        <Option key={brand._id} value={brand.name}>
-                          {brand.name}
-                        </Option>
-                      ))}
-                    </Select>
-                  </Form.Item>
-                </Col>
-              </Row>
+      <div className="ml-56 flex-1 flex justify-center mt-28">
+        <div className="bg-[#151515] p-9 rounded-xl w-[700px] shadow-[0_0_20px_rgba(255,0,50,0.2)]">
+          <h2 className="text-center text-[#c41e3a] text-2xl font-semibold mb-6 uppercase">
+            {isEdit ? "Chỉnh sửa nước hoa" : "Thêm nước hoa mới"}
+          </h2>
 
-              <Row gutter={16}>
-                <Col xs={24} md={12}>
-                  <Form.Item 
-                    name="volume" 
-                    label={<span className="text-white">Volume (ml)</span>}
-                  >
-                    <Input 
-                      type="number" 
-                      placeholder="Enter volume"
-                      className="bg-gray-800 border-gray-600 text-white"
-                      style={{ background: 'rgba(0,0,0,0.3)', borderColor: '#4a5568' }}
-                    />
-                  </Form.Item>
-                </Col>
-                
-                <Col xs={24} md={12}>
-                  <Form.Item 
-                    name="targetAudience" 
-                    label={<span className="text-white">Target Audience</span>}
-                  >
-                    <Select 
-                      placeholder="Select target audience"
-                      className="bg-gray-800 border-gray-600 text-white"
-                      style={{ background: 'rgba(0,0,0,0.3)', borderColor: '#4a5568' }}
-                    >
-                      <Option value="male">Male</Option>
-                      <Option value="female">Female</Option>
-                      <Option value="unisex">Unisex</Option>
-                    </Select>
-                  </Form.Item>
-                </Col>
-              </Row>
+          {error && <p className="text-[#ff5050] text-center mb-4 font-medium">{error}</p>}
 
-              <Form.Item 
-                name="ingredients" 
-                label={<span className="text-white">Ingredients</span>}
-              >
-                <Input.TextArea 
-                  rows={3}
-                  placeholder="Enter ingredients"
-                  className="bg-gray-800 border-gray-600 text-white"
-                  style={{ background: 'rgba(0,0,0,0.3)', borderColor: '#4a5568' }}
-                />
-              </Form.Item>
+          <form onSubmit={handleSubmit}>
+            {/* 🧴 Tên nước hoa */}
+            <label className="block mb-2 text-[#ccc] font-medium">Tên nước hoa *</label>
+            <input
+              type="text"
+              name="perfumeName"
+              value={perfume.perfumeName}
+              onChange={handleChange}
+              required
+              className="w-full p-3 mb-4 rounded-md bg-[#222] text-white border-none outline-none focus:ring-2 focus:ring-[#c41e3a]"
+            />
 
-              <Form.Item 
-                name="description" 
-                label={<span className="text-white">Description</span>}
-              >
-                <Input.TextArea 
-                  rows={4}
-                  placeholder="Enter description"
-                  className="bg-gray-800 border-gray-600 text-white"
-                  style={{ background: 'rgba(0,0,0,0.3)', borderColor: '#4a5568' }}
-                />
-              </Form.Item>
+            {/* 💸 Giá */}
+            <label className="block mb-2 text-[#ccc] font-medium">Giá (VND)</label>
+            <input
+              type="number"
+              name="price"
+              value={perfume.price}
+              onChange={handleChange}
+              className="w-full p-3 mb-4 rounded-md bg-[#222] text-white border-none outline-none focus:ring-2 focus:ring-[#c41e3a]"
+            />
 
-              <Form.Item 
-                name="image" 
-                label={<span className="text-white">Perfume Image</span>}
-                valuePropName="file"
-              >
-                <Upload 
-                  beforeUpload={() => false} 
-                  listType="picture"
-                  maxCount={1}
-                  className="bg-gray-800"
+            <div className="grid grid-cols-2 gap-4">
+              {/* 🌫 Nồng độ */}
+              <div>
+                <label className="block mb-2 text-[#ccc] font-medium">Nồng độ</label>
+                <select
+                  name="concentration"
+                  value={perfume.concentration}
+                  onChange={handleChange}
+                  className="w-full p-3 mb-4 rounded-md bg-[#222] text-white border-none outline-none focus:ring-2 focus:ring-[#c41e3a]"
                 >
-                  <Button 
-                    icon={<UploadOutlined />}
-                    className="border-gray-600 text-gray-300 hover:border-red-400 hover:text-red-400"
-                  >
-                    Choose Image
-                  </Button>
-                </Upload>
-              </Form.Item>
+                  <option value="">-- Chọn --</option>
+                  <option value="EDP">EDP</option>
+                  <option value="EDT">EDT</option>
+                  <option value="Extrait">Extrait</option>
+                  <option value="Parfum">Parfum</option>
+                </select>
+              </div>
 
-              <Form.Item className="mb-0">
-                <div className="flex gap-4">
-                  <Button 
-                    type="primary" 
-                    htmlType="submit" 
-                    size="large"
-                    loading={loading}
-                    icon={<SaveOutlined />}
-                    className="bg-gradient-to-r from-red-500 to-pink-500 border-0"
-                  >
-                    {id ? 'Update Perfume' : 'Add Perfume'}
-                  </Button>
-                  <Button 
-                    size="large"
-                    onClick={() => navigate('/admin/perfumes')}
-                    className="border-gray-600 text-gray-300 hover:border-gray-400 hover:text-white"
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </Form.Item>
-            </Form>
-          </Card>
+              {/* 🚻 Giới tính */}
+              <div>
+                <label className="block mb-2 text-[#ccc] font-medium">Giới tính</label>
+                <select
+                  name="gender"
+                  value={perfume.gender}
+                  onChange={handleChange}
+                  className="w-full p-3 mb-4 rounded-md bg-[#222] text-white border-none outline-none focus:ring-2 focus:ring-[#c41e3a]"
+                >
+                  <option value="">-- Chọn --</option>
+                  <option value="Nam">Nam</option>
+                  <option value="Nữ">Nữ</option>
+                  <option value="Unisex">Unisex</option>
+                </select>
+              </div>
+            </div>
+
+            {/* 🏷 Thương hiệu */}
+            <label className="block mb-2 text-[#ccc] font-medium">Thương hiệu</label>
+            <select
+              name="brand"
+              value={perfume.brand}
+              onChange={(e) =>
+                setPerfume({
+                  ...perfume,
+                  brand: e.target.value, // ✅ Lưu brandName
+                })
+              }
+              disabled={isEdit}
+              className="w-full p-3 mb-4 rounded-md bg-[#222] text-white border-none outline-none focus:ring-2 focus:ring-[#c41e3a]"
+            >
+              <option value="">-- Chọn thương hiệu --</option>
+              {brands.map((b) => (
+                <option key={b._id} value={b.name}>
+                  {b.name}
+                </option>
+              ))}
+            </select>
+
+            <div className="grid grid-cols-2 gap-4">
+              {/* 📦 Dung tích */}
+              <div>
+                <label className="block mb-2 text-[#ccc] font-medium">Dung tích (ml)</label>
+                <input
+                  type="number"
+                  name="volume"
+                  value={perfume.volume}
+                  onChange={handleChange}
+                  className="w-full p-3 mb-4 rounded-md bg-[#222] text-white border-none outline-none focus:ring-2 focus:ring-[#c41e3a]"
+                />
+              </div>
+
+              {/* 👤 Đối tượng */}
+              <div>
+                <label className="block mb-2 text-[#ccc] font-medium">Đối tượng</label>
+                <select
+                  name="targetAudience"
+                  value={perfume.targetAudience}
+                  onChange={handleChange}
+                  className="w-full p-3 mb-4 rounded-md bg-[#222] text-white border-none outline-none focus:ring-2 focus:ring-[#c41e3a]"
+                >
+                  <option value="">-- Chọn --</option>
+                  <option value="male">Nam</option>
+                  <option value="female">Nữ</option>
+                  <option value="unisex">Unisex</option>
+                </select>
+              </div>
+            </div>
+
+            {/* 🌿 Thành phần */}
+            <label className="block mb-2 text-[#ccc] font-medium">Thành phần</label>
+            <textarea
+              name="ingredients"
+              rows="3"
+              value={perfume.ingredients}
+              onChange={handleChange}
+              className="w-full p-3 rounded-md bg-[#222] text-white border-none outline-none resize-y focus:ring-2 focus:ring-[#c41e3a] mb-4"
+            />
+
+            {/* 📖 Mô tả */}
+            <label className="block mb-2 text-[#ccc] font-medium">Mô tả</label>
+            <textarea
+              name="description"
+              rows="4"
+              value={perfume.description}
+              onChange={handleChange}
+              className="w-full p-3 rounded-md bg-[#222] text-white border-none outline-none resize-y focus:ring-2 focus:ring-[#c41e3a] mb-4"
+            />
+
+            {/* 🖼 Ảnh */}
+            <label className="block mb-2 text-[#ccc] font-medium">Hình ảnh nước hoa</label>
+            <Upload
+              beforeUpload={() => false}
+              maxCount={1}
+              onChange={handleUpload}
+              listType="picture"
+              className="mb-4"
+            >
+              <Button icon={<UploadOutlined />} className="bg-[#222] text-white border-none">
+                Chọn ảnh
+              </Button>
+            </Upload>
+
+            {/* ⚙️ Nút hành động */}
+            <div className="grid grid-cols-2 gap-5 mt-6">
+              <button
+                type="submit"
+                className="bg-[#c41e3a] hover:bg-[#a0142e] text-white py-3 rounded-md flex justify-center items-center gap-2 font-medium transition"
+              >
+                <FaFloppyDisk /> {isEdit ? "Cập nhật" : "Lưu"}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => navigate("/admin/perfumes")}
+                className="bg-[#333] hover:bg-[#444] text-white py-3 rounded-md flex justify-center items-center gap-2 font-medium transition"
+              >
+                <FaArrowLeft /> Quay lại
+              </button>
+            </div>
+          </form>
         </div>
       </div>
     </div>
